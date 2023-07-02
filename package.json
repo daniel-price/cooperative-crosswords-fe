@@ -1,0 +1,10 @@
+{
+  "name": "cooperative-crosswords-fe",
+  "version": "1.0.0",
+  "scripts": {
+    "review": "elm-review --ignore-dirs .elm-spa"
+  },
+  "devDependencies": {
+    "elm-review": "^2.10.2"
+  }
+}
