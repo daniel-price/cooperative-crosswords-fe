@@ -3,10 +3,11 @@ module Pages.Home_ exposing (Model, Msg, page)
 import CrosswordInfo exposing (CrosswordInfo)
 import Gen.Params.Home_ exposing (Params)
 import Html exposing (div, text)
-import Http exposing (Error(..))
+import Http
 import Page
 import Request
 import Shared
+import Util exposing (errorToString)
 import View exposing (View)
 
 
@@ -98,32 +99,3 @@ viewCrosswordInfo crosswordInfo =
     div []
         [ text (CrosswordInfo.getName crosswordInfo ++ CrosswordInfo.getCrosswordId crosswordInfo)
         ]
-
-
-
--- OTHER
-
-
-errorToString : Http.Error -> String
-errorToString error =
-    case error of
-        BadUrl url ->
-            "The URL " ++ url ++ " was invalid"
-
-        Timeout ->
-            "Unable to reach the server, try again"
-
-        NetworkError ->
-            "Unable to reach the server, check your network connection"
-
-        BadStatus 500 ->
-            "The server had a problem, try again later"
-
-        BadStatus 400 ->
-            "Verify your information and try again"
-
-        BadStatus _ ->
-            "Unknown error"
-
-        BadBody errorMessage ->
-            errorMessage
