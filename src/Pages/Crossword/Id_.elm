@@ -1,6 +1,6 @@
 module Pages.Crossword.Id_ exposing (Model, Msg, page)
 
-import Crossword exposing (Cell(..), CellData, Clue, ClueId, Crossword, Direction(..))
+import Crossword exposing (Cell(..), CellData, Clue, ClueId, Crossword, Direction(..), getClueNumber)
 import Gen.Params.Crossword.Id_ exposing (Params)
 import Html exposing (Html, div, text)
 import Html.Attributes exposing (id, placeholder, style, value)
@@ -207,13 +207,13 @@ viewPuzzle : Crossword -> State -> Html.Html Msg
 viewPuzzle crossword state =
     div [ style "display" "flex" ]
         [ viewGrid crossword state
-        , viewCluesSection Across crossword
-        , viewCluesSection Down crossword
+        , viewCluesSection state Across crossword
+        , viewCluesSection state Down crossword
         ]
 
 
-viewCluesSection : Direction -> Crossword -> Html Msg
-viewCluesSection direction crossword =
+viewCluesSection : State -> Direction -> Crossword -> Html Msg
+viewCluesSection state direction crossword =
     div
         [ style "display" "flex"
         , style "flex-direction" "column"
@@ -225,16 +225,26 @@ viewCluesSection direction crossword =
                 [ style "display" "flex"
                 , style "flex-direction" "column"
                 ]
-                (List.map viewClue (Crossword.getClues crossword direction))
+                (List.map (viewClue state direction) (Crossword.getClues crossword direction))
             ]
         ]
 
 
-viewClue : Clue -> Html Msg
-viewClue clue =
+viewClue : State -> Direction -> Clue -> Html Msg
+viewClue state direction clue =
+    let
+        backgroundColor : String
+        backgroundColor =
+            if state.clueId.number == getClueNumber clue && direction == state.clueId.direction then
+                "yellow"
+
+            else
+                "white"
+    in
     div
         [ style "display" "flex"
         , style "flex-direction" "row"
+        , style "background-color" backgroundColor
         ]
         [ div
             []
