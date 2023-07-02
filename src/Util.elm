@@ -1,5 +1,7 @@
-module Util exposing (errorToString)
+module Util exposing (errorToString, viewLink)
 
+import Html exposing (a, div)
+import Html.Attributes exposing (href)
 import Http exposing (Error(..))
 
 
@@ -26,3 +28,8 @@ errorToString error =
 
         BadBody errorMessage ->
             errorMessage
+
+
+viewLink : String -> String -> Html.Html msg
+viewLink path text =
+    div [] [ a [ href path ] [ Html.text text ] ]

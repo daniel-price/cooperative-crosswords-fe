@@ -7,7 +7,7 @@ import Http
 import Page
 import Request
 import Shared
-import Util exposing (errorToString)
+import Util exposing (errorToString, viewLink)
 import View exposing (View)
 
 
@@ -97,5 +97,5 @@ viewCrosswordInfoList crosswordInfoList =
 viewCrosswordInfo : CrosswordInfo -> Html.Html Msg
 viewCrosswordInfo crosswordInfo =
     div []
-        [ text (CrosswordInfo.getName crosswordInfo ++ CrosswordInfo.getCrosswordId crosswordInfo)
+        [ viewLink ("/crossword/" ++ CrosswordInfo.getCrosswordId crosswordInfo) (CrosswordInfo.getName crosswordInfo)
         ]
