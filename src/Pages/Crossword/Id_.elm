@@ -4,7 +4,9 @@ import Crossword exposing (Cell(..), Crossword)
 import Gen.Params.Crossword.Id_ exposing (Params)
 import Html exposing (div, text)
 import Html.Attributes exposing (id, placeholder, style, value)
+import Html.Events exposing (onClick)
 import Http
+import List.Extra
 import Page
 import Request
 import Shared
@@ -26,9 +28,14 @@ page _ req =
 -- INIT
 
 
+type alias State =
+    { index : Int
+    }
+
+
 type Model
     = Loading
-    | Loaded Crossword
+    | Loaded Crossword State
     | Error Http.Error
 
 
@@ -45,18 +52,54 @@ init req =
 
 type Msg
     = GotCrossword (Result Http.Error Crossword)
+    | CellSelected Int
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
-update msg _ =
+update msg model =
     case msg of
         GotCrossword crossword ->
             case crossword of
                 Ok c ->
-                    ( Loaded c, Cmd.none )
+                    let
+                        index : Int
+                        index =
+                            Maybe.withDefault
+                                0
+                                (List.Extra.findIndex
+                                    (\cell ->
+                                        case cell of
+                                            White _ ->
+                                                True
+
+                                            Black ->
+                                                False
+                                    )
+                                    (Crossword.getCells c)
+                                )
+
+                        state : { index : Int }
+                        state =
+                            { index = index
+                            }
+                    in
+                    ( Loaded c state, Cmd.none )
 
                 Err e ->
                     ( Error e, Cmd.none )
+
+        CellSelected index ->
+            case model of
+                Loaded crossword state ->
+                    let
+                        newState : State
+                        newState =
+                            { state | index = index }
+                    in
+                    ( Loaded crossword newState, Cmd.none )
+
+                _ ->
+                    ( model, Cmd.none )
 
 
 
@@ -84,22 +127,22 @@ view model =
                 Error e ->
                     div [] [ text (Util.errorToString e) ]
 
-                Loaded crossword ->
-                    viewPuzzle crossword
+                Loaded crossword state ->
+                    viewPuzzle crossword state
             ]
         ]
     }
 
 
-viewPuzzle : Crossword -> Html.Html Msg
-viewPuzzle crossword =
+viewPuzzle : Crossword -> State -> Html.Html Msg
+viewPuzzle crossword state =
     div [ style "display" "flex" ]
-        [ viewGrid crossword
+        [ viewGrid crossword state
         ]
 
 
-viewGrid : Crossword -> Html.Html Msg
-viewGrid crossword =
+viewGrid : Crossword -> State -> Html.Html Msg
+viewGrid crossword state =
     div
         [ style "border" "1px solid black"
         , style "display" "grid"
@@ -111,15 +154,53 @@ viewGrid crossword =
         , style "list-style-type" "none"
         , style "position" "relative"
         ]
-        (List.indexedMap viewCell (Crossword.getCells crossword))
+        (List.indexedMap (viewCell state) (Crossword.getCells crossword))
 
 
-viewCell : Int -> Cell -> Html.Html Msg
-viewCell index cell =
+viewCell : State -> Int -> Cell -> Html.Html Msg
+viewCell state index cell =
     case cell of
         White cellData ->
+            let
+                isSelected : Bool
+                isSelected =
+                    state.index == index
+
+                outline : String
+                outline =
+                    if isSelected then
+                        "3px solid DodgerBlue"
+
+                    else
+                        "0px"
+
+                border : String
+                border =
+                    if isSelected then
+                        "3px solid DodgerBlue"
+
+                    else
+                        "1px solid black"
+
+                zIndex : String
+                zIndex =
+                    if isSelected then
+                        "10"
+
+                    else
+                        "0"
+
+                borderWidth : String
+                borderWidth =
+                    if isSelected then
+                        "3px"
+
+                    else
+                        "1px"
+            in
             div
                 [ style "position" "relative"
+                , onClick (CellSelected index)
                 ]
                 [ div
                     [ style "position" "absolute"
@@ -150,7 +231,10 @@ viewCell index cell =
                     , style "background" "transparent"
                     , style "width" "50px"
                     , style "height" "50px"
-                    , style "border" "1px solid black"
+                    , style "outline" outline
+                    , style "border" border
+                    , style "z-index" zIndex
+                    , style "border-width" borderWidth
                     ]
                     [ text (Util.charToString cellData.value) ]
                 ]
