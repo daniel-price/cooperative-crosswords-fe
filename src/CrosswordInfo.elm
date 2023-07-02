@@ -1,5 +1,6 @@
 module CrosswordInfo exposing (CrosswordInfo, fetch, getCrosswordId, getName)
 
+import Constants
 import Http
 import Json.Decode as D
 import Json.Decode.Pipeline as DP
@@ -27,7 +28,7 @@ fetch msg =
     Http.get
         { url =
             Url.Builder.crossOrigin
-                "https://cooperative-crosswords.onrender.com"
+                Constants.apiUrl
                 [ "crosswords" ]
                 []
         , expect = Http.expectJson msg (D.list crosswordInfoDecoder)
