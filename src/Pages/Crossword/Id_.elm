@@ -1,17 +1,20 @@
 module Pages.Crossword.Id_ exposing (Model, Msg, page)
 
+import Crossword exposing (Crossword)
 import Gen.Params.Crossword.Id_ exposing (Params)
+import Html exposing (div, text)
+import Http
 import Page
 import Request
 import Shared
-import Task
+import Util
 import View exposing (View)
 
 
 page : Shared.Model -> Request.With Params -> Page.With Model Msg
-page _ _ =
+page _ req =
     Page.element
-        { init = init
+        { init = init req
         , update = update
         , view = view
         , subscriptions = subscriptions
@@ -22,13 +25,17 @@ page _ _ =
 -- INIT
 
 
-type alias Model =
-    {}
+type Model
+    = Loading
+    | Loaded Crossword
+    | Error Http.Error
 
 
-init : ( Model, Cmd Msg )
-init =
-    ( {}, Task.perform (always NoOp) (Task.succeed ()) )
+init : Request.With Params -> ( Model, Cmd Msg )
+init req =
+    ( Loading
+    , Crossword.fetch req.params.id GotCrossword
+    )
 
 
 
@@ -36,14 +43,19 @@ init =
 
 
 type Msg
-    = NoOp
+    = GotCrossword (Result Http.Error Crossword)
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
-update msg model =
+update msg _ =
     case msg of
-        NoOp ->
-            ( model, Cmd.none )
+        GotCrossword crossword ->
+            case crossword of
+                Ok c ->
+                    ( Loaded c, Cmd.none )
+
+                Err e ->
+                    ( Error e, Cmd.none )
 
 
 
@@ -60,5 +72,19 @@ subscriptions _ =
 
 
 view : Model -> View Msg
-view _ =
-    View.placeholder "Crossword.Id_"
+view model =
+    { title = "Crossword"
+    , body =
+        [ div []
+            [ case model of
+                Loading ->
+                    div [] [ text "Loading..." ]
+
+                Error e ->
+                    div [] [ text (Util.errorToString e) ]
+
+                Loaded crossword ->
+                    Html.text (Crossword.toString crossword)
+            ]
+        ]
+    }
