@@ -1,4 +1,4 @@
-module Crossword exposing (Cell(..), CellData, Clue, ClueId, Clues, Crossword(..), Direction(..), Internals, fetch, getCells, getNumberOfRows)
+module Crossword exposing (Cell(..), CellData, Clue, ClueId, Clues, Crossword(..), Direction(..), Internals, directionToString, fetch, getCells, getClueNumber, getClues, getNumberOfRows, getText)
 
 import Constants
 import Http
@@ -163,6 +163,16 @@ exactMatch matchDecoder match dec =
             )
 
 
+directionToString : Direction -> String
+directionToString direction =
+    case direction of
+        Across ->
+            "Across"
+
+        Down ->
+            "Down"
+
+
 getCells : Crossword -> List Cell
 getCells (Crossword crossword) =
     crossword.grid
@@ -171,3 +181,23 @@ getCells (Crossword crossword) =
 getNumberOfRows : Crossword -> Int
 getNumberOfRows (Crossword crossword) =
     crossword.numberOfRows
+
+
+getClues : Crossword -> Direction -> List Clue
+getClues (Crossword crossword) direction =
+    case direction of
+        Across ->
+            crossword.clues.across
+
+        Down ->
+            crossword.clues.down
+
+
+getClueNumber : Clue -> Int
+getClueNumber clue =
+    clue.id
+
+
+getText : Clue -> String
+getText clue =
+    clue.value

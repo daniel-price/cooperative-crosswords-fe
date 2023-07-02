@@ -1,8 +1,8 @@
 module Pages.Crossword.Id_ exposing (Model, Msg, page)
 
-import Crossword exposing (Cell(..), Crossword)
+import Crossword exposing (Cell(..), Clue, Crossword, Direction(..))
 import Gen.Params.Crossword.Id_ exposing (Params)
-import Html exposing (div, text)
+import Html exposing (Html, div, text)
 import Html.Attributes exposing (id, placeholder, style, value)
 import Html.Events exposing (onClick)
 import Http
@@ -138,6 +138,43 @@ viewPuzzle : Crossword -> State -> Html.Html Msg
 viewPuzzle crossword state =
     div [ style "display" "flex" ]
         [ viewGrid crossword state
+        , viewCluesSection Across crossword
+        , viewCluesSection Down crossword
+        ]
+
+
+viewCluesSection : Direction -> Crossword -> Html Msg
+viewCluesSection direction crossword =
+    div
+        [ style "display" "flex"
+        , style "flex-direction" "column"
+        ]
+        [ div
+            []
+            [ text (Crossword.directionToString direction)
+            , div
+                [ style "display" "flex"
+                , style "flex-direction" "column"
+                ]
+                (List.map viewClue (Crossword.getClues crossword direction))
+            ]
+        ]
+
+
+viewClue : Clue -> Html Msg
+viewClue clue =
+    div
+        [ style "display" "flex"
+        , style "flex-direction" "row"
+        ]
+        [ div
+            []
+            [ text (String.fromInt (Crossword.getClueNumber clue))
+            ]
+        , div
+            []
+            [ text (Crossword.getText clue)
+            ]
         ]
 
 
