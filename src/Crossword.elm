@@ -1,4 +1,4 @@
-module Crossword exposing (Cell(..), CellData, Clue, ClueId, Clues, Crossword(..), Direction(..), Internals, directionToString, fetch, getCells, getClueNumber, getClues, getNumberOfRows, getText)
+module Crossword exposing (Cell(..), CellData, Clue, ClueId, Clues, Crossword(..), Direction(..), Internals, directionToString, fetch, getCells, getClueNumber, getClues, getDirection, getNumberOfRows, getText)
 
 import Constants
 import Http
@@ -201,3 +201,8 @@ getClueNumber clue =
 getText : Clue -> String
 getText clue =
     clue.value
+
+
+getDirection : ClueId -> Direction
+getDirection clueId =
+    clueId.direction

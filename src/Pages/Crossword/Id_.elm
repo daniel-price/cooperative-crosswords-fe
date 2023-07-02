@@ -1,6 +1,6 @@
 module Pages.Crossword.Id_ exposing (Model, Msg, page)
 
-import Crossword exposing (Cell(..), Clue, Crossword, Direction(..))
+import Crossword exposing (Cell(..), CellData, Clue, ClueId, Crossword, Direction(..))
 import Gen.Params.Crossword.Id_ exposing (Params)
 import Html exposing (Html, div, text)
 import Html.Attributes exposing (id, placeholder, style, value)
@@ -30,6 +30,8 @@ page _ req =
 
 type alias State =
     { index : Int
+    , direction : Direction
+    , clueId : ClueId
     }
 
 
@@ -52,7 +54,7 @@ init req =
 
 type Msg
     = GotCrossword (Result Http.Error Crossword)
-    | CellSelected Int
+    | CellSelected Int CellData
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -78,9 +80,33 @@ update msg model =
                                     (Crossword.getCells c)
                                 )
 
-                        state : { index : Int }
+                        cellAtIndex : Maybe Cell
+                        cellAtIndex =
+                            List.Extra.getAt index (Crossword.getCells c)
+
+                        direction : Direction
+                        direction =
+                            case cellAtIndex of
+                                Just (White cellData) ->
+                                    Crossword.getDirection cellData.clueId1
+
+                                _ ->
+                                    Across
+
+                        clueId : ClueId
+                        clueId =
+                            case cellAtIndex of
+                                Just (White cellData) ->
+                                    cellData.clueId1
+
+                                _ ->
+                                    { direction = Across, number = 1 }
+
+                        state : State
                         state =
                             { index = index
+                            , direction = direction
+                            , clueId = clueId
                             }
                     in
                     ( Loaded c state, Cmd.none )
@@ -88,18 +114,61 @@ update msg model =
                 Err e ->
                     ( Error e, Cmd.none )
 
-        CellSelected index ->
+        CellSelected index cellData ->
             case model of
                 Loaded crossword state ->
                     let
+                        newDirection : Direction
+                        newDirection =
+                            getNewDirection index state cellData
+
+                        newClueId : ClueId
+                        newClueId =
+                            case cellData.clueId2 of
+                                Just clueId ->
+                                    if clueId.direction == newDirection then
+                                        clueId
+
+                                    else
+                                        cellData.clueId1
+
+                                Nothing ->
+                                    cellData.clueId1
+
                         newState : State
                         newState =
-                            { state | index = index }
+                            { index = index, direction = newDirection, clueId = newClueId }
                     in
                     ( Loaded crossword newState, Cmd.none )
 
                 _ ->
                     ( model, Cmd.none )
+
+
+getNewDirection : Int -> State -> CellData -> Direction
+getNewDirection index state cellData =
+    let
+        cellHasOneDirection : Bool
+        cellHasOneDirection =
+            case cellData.clueId2 of
+                Just _ ->
+                    False
+
+                Nothing ->
+                    True
+    in
+    if cellHasOneDirection then
+        Crossword.getDirection cellData.clueId1
+
+    else if state.index == index then
+        if state.direction == Across then
+            Down
+
+        else
+            Across
+
+    else
+        state.direction
 
 
 
@@ -194,14 +263,36 @@ viewGrid crossword state =
         (List.indexedMap (viewCell state) (Crossword.getCells crossword))
 
 
+shouldHighlight : State -> CellData -> Bool
+shouldHighlight state cellData =
+    case cellData.clueId2 of
+        Just clueId ->
+            (clueId == state.clueId && clueId.direction == state.direction) || cellData.clueId1 == state.clueId
+
+        Nothing ->
+            cellData.clueId1 == state.clueId
+
+
 viewCell : State -> Int -> Cell -> Html.Html Msg
 viewCell state index cell =
     case cell of
         White cellData ->
             let
+                isHighlighted : Bool
+                isHighlighted =
+                    shouldHighlight state cellData
+
                 isSelected : Bool
                 isSelected =
                     state.index == index
+
+                backgroundColor : String
+                backgroundColor =
+                    if isHighlighted then
+                        "yellow"
+
+                    else
+                        "white"
 
                 outline : String
                 outline =
@@ -237,7 +328,7 @@ viewCell state index cell =
             in
             div
                 [ style "position" "relative"
-                , onClick (CellSelected index)
+                , onClick (CellSelected index cellData)
                 ]
                 [ div
                     [ style "position" "absolute"
@@ -272,6 +363,7 @@ viewCell state index cell =
                     , style "border" border
                     , style "z-index" zIndex
                     , style "border-width" borderWidth
+                    , style "backgroundColor" backgroundColor
                     ]
                     [ text (Util.charToString cellData.value) ]
                 ]
