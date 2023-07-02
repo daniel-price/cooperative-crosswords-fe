@@ -1,4 +1,4 @@
-module Util exposing (errorToString, viewLink)
+module Util exposing (charToString, errorToString, viewLink)
 
 import Html exposing (a, div)
 import Html.Attributes exposing (href)
@@ -33,3 +33,13 @@ errorToString error =
 viewLink : String -> String -> Html.Html msg
 viewLink path text =
     div [] [ a [ href path ] [ Html.text text ] ]
+
+
+charToString : Maybe Char -> String
+charToString char =
+    case char of
+        Just c ->
+            String.fromChar c
+
+        Nothing ->
+            ""

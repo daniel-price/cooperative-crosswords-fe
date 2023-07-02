@@ -1,4 +1,4 @@
-module Crossword exposing (Cell(..), CellData, Clue, ClueId, Clues, Crossword(..), Direction(..), Internals, fetch, toString)
+module Crossword exposing (Cell(..), CellData, Clue, ClueId, Clues, Crossword(..), Direction(..), Internals, fetch, getCells, getNumberOfRows)
 
 import Constants
 import Http
@@ -163,85 +163,11 @@ exactMatch matchDecoder match dec =
             )
 
 
-
--- TOSTRING
-
-
-toString : Crossword -> String
-toString stringable =
-    case stringable of
-        Crossword crossword ->
-            "Crossword"
-                ++ "\n  numberOfColumns: "
-                ++ String.fromInt crossword.numberOfColumns
-                ++ "\n  numberOfRows: "
-                ++ String.fromInt crossword.numberOfRows
-                ++ "\n  clues: "
-                ++ cluesToString crossword.clues
-                ++ "\n  grid: "
-                ++ String.concat (List.map cellToString crossword.grid)
+getCells : Crossword -> List Cell
+getCells (Crossword crossword) =
+    crossword.grid
 
 
-cellToString : Cell -> String
-cellToString cell =
-    case cell of
-        White cellData ->
-            "White"
-                ++ "\n    clueId1: "
-                ++ clueIdToString cellData.clueId1
-                ++ "\n    clueId2: "
-                ++ maybeClueIdToString cellData.clueId2
-                ++ "\n    value: "
-                ++ Maybe.withDefault "" (Maybe.map String.fromChar cellData.value)
-                ++ "\n    number: "
-                ++ Maybe.withDefault "" (Maybe.map String.fromInt cellData.number)
-
-        Black ->
-            "Black"
-
-
-maybeClueIdToString : Maybe ClueId -> String
-maybeClueIdToString maybeCludId =
-    case maybeCludId of
-        Just clueId ->
-            clueIdToString clueId
-
-        Nothing ->
-            "Nothing"
-
-
-clueIdToString : ClueId -> String
-clueIdToString clueId =
-    "ClueId"
-        ++ "\n      direction: "
-        ++ directionToString clueId.direction
-        ++ "\n      number: "
-        ++ String.fromInt clueId.number
-
-
-directionToString : Direction -> String
-directionToString direction =
-    case direction of
-        Across ->
-            "Across"
-
-        Down ->
-            "Down"
-
-
-cluesToString : Clues -> String
-cluesToString clues =
-    "Clues"
-        ++ "\n    across: "
-        ++ String.concat (List.map clueToString clues.across)
-        ++ "\n    down: "
-        ++ String.concat (List.map clueToString clues.down)
-
-
-clueToString : Clue -> String
-clueToString clue =
-    "Clue"
-        ++ "\n      id: "
-        ++ String.fromInt clue.id
-        ++ "\n      value: "
-        ++ clue.value
+getNumberOfRows : Crossword -> Int
+getNumberOfRows (Crossword crossword) =
+    crossword.numberOfRows
