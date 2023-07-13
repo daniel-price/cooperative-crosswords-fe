@@ -1,15 +1,19 @@
 module Pages.Crossword.Id_ exposing (Model, Msg, page)
 
+import Browser.Dom as Dom
+import Browser.Events
 import Crossword exposing (Cell(..), CellData, Clue, ClueId, Crossword, Direction(..))
 import Gen.Params.Crossword.Id_ exposing (Params)
 import Html exposing (Html, div, input, text)
 import Html.Attributes exposing (id, placeholder, style, value)
 import Html.Events exposing (onClick, onInput)
 import Http
+import Json.Decode as Decode
 import List.Extra
 import Page
 import Request
 import Shared
+import Task
 import Util
 import View exposing (View)
 
@@ -56,6 +60,8 @@ type Msg
     = GotCrossword (Result Http.Error Crossword)
     | CellSelected Int CellData
     | CellChanged Int (Maybe Char)
+    | KeyTouched KeyEventMsg
+    | NoOp
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -110,7 +116,7 @@ update msg model =
                             , clueId = clueId
                             }
                     in
-                    ( Loaded c state, Cmd.none )
+                    ( Loaded c state, focusTextInput )
 
                 Err e ->
                     ( Error e, Cmd.none )
@@ -140,7 +146,7 @@ update msg model =
                         newState =
                             { index = cellIndex, direction = newDirection, clueId = newClueId }
                     in
-                    ( Loaded crossword newState, Cmd.none )
+                    ( Loaded crossword newState, focusTextInput )
 
                 _ ->
                     ( model, Cmd.none )
@@ -170,19 +176,118 @@ update msg model =
                         newCrossword =
                             Crossword.updateGrid crossword index string
                     in
-                    ( Loaded newCrossword newState, Cmd.none )
+                    ( Loaded newCrossword newState, focusTextInput )
 
                 _ ->
                     ( model, Cmd.none )
+
+        KeyTouched keyEventMsg ->
+            case model of
+                Loaded crossword state ->
+                    case keyEventMsg of
+                        BackspacePressed ->
+                            let
+                                currentCellChar : Maybe Char
+                                currentCellChar =
+                                    Crossword.getCurrentCellChar state.index crossword
+
+                                nextIndex : Int
+                                nextIndex =
+                                    case currentCellChar of
+                                        Nothing ->
+                                            Crossword.getNextWhiteCell crossword state.direction state.index True
+
+                                        _ ->
+                                            state.index
+
+                                newState : State
+                                newState =
+                                    { state | index = nextIndex }
+
+                                newCrossword : Crossword
+                                newCrossword =
+                                    Crossword.updateGrid crossword state.index Nothing
+                            in
+                            ( Loaded newCrossword newState, focusTextInput )
+
+                        --TODO implement other keys
+                        _ ->
+                            ( model, Cmd.none )
+
+                _ ->
+                    ( model, Cmd.none )
+
+        NoOp ->
+            ( model, Cmd.none )
 
 
 
 -- SUBSCRIPTIONS
 
 
+type KeyEventMsg
+    = KeyEventUnknown
+    | TabPressed
+    | BackspacePressed
+    | ShiftPressed
+    | ShiftReleased
+    | LeftPressed
+    | RightPressed
+    | UpPressed
+    | DownPressed
+
+
 subscriptions : Model -> Sub Msg
 subscriptions _ =
-    Sub.none
+    Sub.batch
+        [ Browser.Events.onKeyDown (keyDecoder keyDownMap)
+        , Browser.Events.onKeyUp (keyDecoder keyUpMap)
+        ]
+
+
+keyDecoder : (String -> KeyEventMsg) -> Decode.Decoder Msg
+keyDecoder map =
+    Decode.map
+        (map >> KeyTouched)
+        (Decode.field "key" Decode.string)
+
+
+keyUpMap : String -> KeyEventMsg
+keyUpMap eventKeyString =
+    case eventKeyString of
+        "Shift" ->
+            ShiftReleased
+
+        _ ->
+            KeyEventUnknown
+
+
+keyDownMap : String -> KeyEventMsg
+keyDownMap eventKeyString =
+    case eventKeyString of
+        "Shift" ->
+            ShiftPressed
+
+        "Tab" ->
+            TabPressed
+
+        "Backspace" ->
+            BackspacePressed
+
+        "ArrowLeft" ->
+            LeftPressed
+
+        "ArrowRight" ->
+            RightPressed
+
+        "ArrowUp" ->
+            UpPressed
+
+        "ArrowDown" ->
+            DownPressed
+
+        _ ->
+            KeyEventUnknown
 
 
 
@@ -451,3 +556,10 @@ getGridTemplate crossword =
 getCellPercentage : Crossword -> Float
 getCellPercentage crossword =
     100 / toFloat (Crossword.getNumberOfRows crossword)
+
+
+focusTextInput : Cmd Msg
+focusTextInput =
+    Task.attempt
+        (\_ -> NoOp)
+        (Dom.focus "text-input")
