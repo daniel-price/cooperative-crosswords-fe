@@ -1,10 +1,12 @@
-module Crossword exposing (Cell(..), CellData, Clue, ClueId, Clues, Crossword(..), Direction(..), Internals, directionToString, fetch, getCells, getClueNumber, getClues, getDirection, getNumberOfRows, getText)
+module Crossword exposing (Cell(..), CellData, Clue, ClueId, Clues, Crossword(..), Direction(..), Internals, directionToString, fetch, getCells, getClueNumber, getClues, getColumnNumber, getCurrentCellChar, getDirection, getNewDirection, getNextWhiteCell, getNumberOfRows, getRowNumber, getText, updateGrid)
 
 import Constants
 import Http
 import Json.Decode as D
 import Json.Decode.Pipeline as DP
+import List.Extra
 import Url.Builder
+import Util
 
 
 type Direction
@@ -206,3 +208,182 @@ getText clue =
 getDirection : ClueId -> Direction
 getDirection clueId =
     clueId.direction
+
+
+getRowNumber : Crossword -> Int -> Int
+getRowNumber (Crossword crossword) index =
+    floor (toFloat index / toFloat crossword.numberOfColumns) + 1
+
+
+getColumnNumber : Crossword -> Int -> Int
+getColumnNumber (Crossword crossword) index =
+    modBy crossword.numberOfColumns index + 1
+
+
+updateGrid : Crossword -> Int -> Maybe Char -> Crossword
+updateGrid (Crossword crossword) index newChar =
+    Crossword
+        { crossword
+            | grid =
+                crossword.grid
+                    |> List.Extra.updateIfIndex ((==) index)
+                        (\item ->
+                            case item of
+                                White cellData ->
+                                    White { cellData | value = newChar }
+
+                                Black ->
+                                    Black
+                        )
+        }
+
+
+getLeftWhiteIndex : List Cell -> Int -> Int
+getLeftWhiteIndex grid index =
+    let
+        previousSquares : List Cell
+        previousSquares =
+            List.reverse (Tuple.first (List.Extra.splitAt index grid))
+
+        offset : Maybe Int
+        offset =
+            List.Extra.findIndex isWhiteSquare previousSquares
+    in
+    case offset of
+        Just n ->
+            index - n - 1
+
+        Nothing ->
+            -- reached the first square
+            index
+
+
+getDownWhiteIndex : Int -> Crossword -> Int
+getDownWhiteIndex currentIndex crossword =
+    let
+        columnSquares : List Cell
+        columnSquares =
+            Util.takeEveryNthIndexesFromIndex (getNumberOfRows crossword) (getColumnNumber crossword currentIndex) (getCells crossword)
+
+        columnsDown : List Cell
+        columnsDown =
+            Tuple.second (List.Extra.splitAt (getRowNumber crossword currentIndex) columnSquares)
+
+        index : Maybe Int
+        index =
+            List.Extra.findIndex isWhiteSquare columnsDown
+    in
+    case index of
+        Just n ->
+            currentIndex + (getNumberOfRows crossword * (n + 1))
+
+        Nothing ->
+            -- reached the last square
+            currentIndex
+
+
+getUpWhiteIndex : Int -> Crossword -> Int
+getUpWhiteIndex currentIndex crossword =
+    let
+        columnSquares : List Cell
+        columnSquares =
+            Util.takeEveryNthIndexesFromIndex (getNumberOfRows crossword) (getColumnNumber crossword currentIndex) (getCells crossword)
+
+        columnsUp : List Cell
+        columnsUp =
+            List.reverse (Tuple.first (List.Extra.splitAt (getRowNumber crossword currentIndex - 1) columnSquares))
+
+        index : Maybe Int
+        index =
+            List.Extra.findIndex isWhiteSquare columnsUp
+    in
+    case index of
+        Just n ->
+            currentIndex - (getNumberOfRows crossword * (n + 1))
+
+        Nothing ->
+            -- reached the last square
+            currentIndex
+
+
+getRightWhiteIndex : List Cell -> Int -> Int
+getRightWhiteIndex grid index =
+    let
+        nextSquares : List Cell
+        nextSquares =
+            Tuple.second (List.Extra.splitAt (index + 1) grid)
+    in
+    case List.Extra.findIndex isWhiteSquare nextSquares of
+        Just n ->
+            index + 1 + n
+
+        Nothing ->
+            -- reached the last square
+            index
+
+
+isWhiteSquare : Cell -> Bool
+isWhiteSquare cell =
+    case cell of
+        White _ ->
+            True
+
+        Black ->
+            False
+
+
+getNextWhiteCell : Crossword -> Direction -> Int -> Bool -> Int
+getNextWhiteCell crossword direction index backwards =
+    if direction == Across then
+        if backwards then
+            getLeftWhiteIndex (getCells crossword) index
+
+        else
+            getRightWhiteIndex (getCells crossword) index
+
+    else if backwards then
+        getUpWhiteIndex index crossword
+
+    else
+        getDownWhiteIndex index crossword
+
+
+getCurrentCellChar : Int -> Crossword -> Maybe Char
+getCurrentCellChar index crossword =
+    let
+        cell : Maybe Cell
+        cell =
+            Util.elementAtIndex (index + 1) (getCells crossword)
+    in
+    case cell of
+        Just (White cellData) ->
+            cellData.value
+
+        _ ->
+            Nothing
+
+
+getNewDirection : Int -> Int -> Direction -> CellData -> Direction
+getNewDirection newIndex currentIndex currentDirection cellData =
+    let
+        cellHasOneDirection : Bool
+        cellHasOneDirection =
+            case cellData.clueId2 of
+                Just _ ->
+                    False
+
+                Nothing ->
+                    True
+    in
+    if cellHasOneDirection then
+        getDirection cellData.clueId1
+
+    else if currentIndex == newIndex then
+        if currentDirection == Across then
+            Down
+
+        else
+            Across
+
+    else
+        currentDirection
