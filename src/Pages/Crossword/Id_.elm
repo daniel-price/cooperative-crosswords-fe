@@ -59,6 +59,7 @@ init req =
 type Msg
     = GotCrossword (Result Http.Error Crossword)
     | CellSelected Int CellData
+    | CellUnSelected
     | CellChanged Int (Maybe Char)
     | KeyTouched KeyEventMsg
     | NoOp
@@ -211,6 +212,19 @@ update msg model =
         NoOp ->
             ( model, Cmd.none )
 
+        CellUnSelected ->
+            case model of
+                Loaded crossword state ->
+                    let
+                        newState : State
+                        newState =
+                            { state | index = -100, clueId = { direction = Across, number = -100 } }
+                    in
+                    ( Loaded crossword newState, focusTextInput )
+
+                _ ->
+                    ( model, Cmd.none )
+
 
 
 -- SUBSCRIPTIONS
@@ -307,10 +321,22 @@ view model =
 viewPuzzle : Crossword -> State -> Html.Html Msg
 viewPuzzle crossword state =
     div [ style "display" "flex" ]
-        [ viewGrid crossword state
+        [ background
+        , viewGrid crossword state
         , viewCluesSection state Across crossword
         , viewCluesSection state Down crossword
         ]
+
+
+background : Html Msg
+background =
+    div
+        [ style "height" "100%"
+        , style "width" "100%"
+        , style "position" "fixed"
+        , onClick CellUnSelected
+        ]
+        []
 
 
 viewCluesSection : State -> Direction -> Crossword -> Html Msg
