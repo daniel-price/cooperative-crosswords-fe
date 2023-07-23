@@ -155,18 +155,9 @@ update msg model =
             case model of
                 Loaded crossword state ->
                     let
-                        currentCellChar : Maybe Char
-                        currentCellChar =
-                            Crossword.getCurrentCellChar state.index crossword
-
                         nextIndex : Int
                         nextIndex =
-                            case currentCellChar of
-                                Nothing ->
-                                    Crossword.getNextWhiteCell crossword state.direction state.index False
-
-                                _ ->
-                                    state.index
+                            Crossword.getNextWhiteCell crossword state.direction state.index False
 
                         newState : State
                         newState =
