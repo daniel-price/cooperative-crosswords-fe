@@ -320,7 +320,10 @@ view model =
 
 viewPuzzle : Crossword -> State -> Html.Html Msg
 viewPuzzle crossword state =
-    div [ style "display" "flex" ]
+    div
+        [ style "display" "flex"
+        , style "flex-wrap" "wrap"
+        ]
         [ background
         , viewGrid crossword state
         , viewCluesSection state Across crossword
@@ -387,15 +390,18 @@ viewClue state direction clue =
 viewGrid : Crossword -> State -> Html.Html Msg
 viewGrid crossword state =
     div
-        [ style "border" "1px solid black"
-        , style "display" "grid"
-        , style "height" "750px"
-        , style "width" "750px"
+        [ style "display" "flex"
+        , style "flex-wrap" "wrap"
+        , style "width" "100vmin"
+        , style "max-width" "750px"
+        , style "height" "100vmin"
+        , style "max-height" "750px"
         , style "padding" "0"
         , style "margin" "0"
-        , style "grid-template" (getGridTemplate crossword)
         , style "list-style-type" "none"
         , style "position" "relative"
+        , style "aspect-ratio" "1"
+        , style "align-content" "flex-start"
         ]
         (viewInput crossword state
             :: List.indexedMap (viewCell state) (Crossword.getCells crossword)
@@ -431,7 +437,6 @@ viewInput crossword state =
         , style "box-shadow" "none"
         , style "top" (String.concat [ String.fromInt ((rowNumber - 1) * 50), "px" ])
         , style "left" (String.concat [ String.fromInt ((columnNumber - 1) * 50), "px" ])
-        , style "outline" "3px solid DodgerBlue"
         , style "border-width" "3px"
         , onInput (onTextInput state)
         , value ""
@@ -486,7 +491,7 @@ viewCell state index cell =
                 border : String
                 border =
                     if isSelected then
-                        "3px solid DodgerBlue"
+                        "1px solid DodgerBlue"
 
                     else
                         "1px solid black"
@@ -498,22 +503,38 @@ viewCell state index cell =
 
                     else
                         "0"
-
-                borderWidth : String
-                borderWidth =
-                    if isSelected then
-                        "3px"
-
-                    else
-                        "1px"
             in
             div
-                [ style "position" "relative"
+                [ style "display" "relative"
                 , onClick (CellSelected index cellData)
+                , id (String.fromInt index)
+                , style
+                    "position"
+                    "relative"
+                , placeholder ""
+                , value (Util.charToString cellData.value)
+                , style "text-transform" "uppercase"
+                , style "box-sizing" "border-box"
+                , style "outline" "none"
+                , style "text-align" "center"
+                , style "font-size" "20px"
+                , style "font-weight" "bold"
+                , style "background" "transparent"
+                , style "width" "6%"
+                , style "height" "0px"
+                , style "flex-basis" "6.66666666667%"
+                , style "padding-bottom" "6%"
+                , style "outline" outline
+                , style "border" border
+                , style "z-index" zIndex
+                , style "backgroundColor" backgroundColor
+                , style "font-size" "min(4vw,30px)"
                 ]
                 [ div
                     [ style "position" "absolute"
                     , style "z-index" "20"
+                    , style "font-size" "min(2.5vw,17px)"
+                    , style "font-weight" "normal"
                     ]
                     [ text
                         (case cellData.number of
@@ -525,54 +546,42 @@ viewCell state index cell =
                         )
                     ]
                 , div
-                    [ id (String.fromInt index)
-                    , style
-                        "position"
-                        "relative"
-                    , placeholder ""
-                    , value (Util.charToString cellData.value)
-                    , style "text-transform" "uppercase"
-                    , style "box-sizing" "border-box"
-                    , style "outline" "none"
-                    , style "text-align" "center"
-                    , style "font-size" "20px"
-                    , style "font-weight" "bold"
-                    , style "background" "transparent"
-                    , style "width" "50px"
-                    , style "height" "50px"
-                    , style "outline" outline
-                    , style "border" border
-                    , style "z-index" zIndex
-                    , style "border-width" borderWidth
-                    , style "backgroundColor" backgroundColor
+                    [ style "line-height" "1.5"
                     ]
-                    [ text (Util.charToString cellData.value) ]
+                    [ text (Util.charToString cellData.value)
+                    ]
                 ]
 
         Black ->
             div
-                [ style "background-color" "black"
+                [ style "position" "relative"
+                , id (String.fromInt index)
+                , style
+                    "position"
+                    "relative"
+                , placeholder ""
+                , style "text-transform" "uppercase"
+                , style "box-sizing" "border-box"
+                , style "outline" "none"
+                , style "text-align" "center"
+                , style "font-size" "20px"
+                , style "font-weight" "bold"
+                , style "background" "transparent"
+                , style "width" "6%"
+                , style "height" "0px"
+                , style "padding-bottom" "6%"
+                , style "outline" "0px"
+                , style "border" "1px solid black"
+                , style "z-index" "0"
+                , style "border-width" "1px"
+                , style "backgroundColor" "black"
+                , style "flex-basis" "6.66666666667%"
                 ]
                 []
 
 
 
 -- OTHER
-
-
-getGridTemplate : Crossword -> String
-getGridTemplate crossword =
-    let
-        singleCellPercentage : Float
-        singleCellPercentage =
-            getCellPercentage crossword
-    in
-    String.concat [ "repeat(", String.fromInt (Crossword.getNumberOfRows crossword), ", ", String.fromFloat singleCellPercentage, "%)/repeat(", String.fromInt (Crossword.getNumberOfRows crossword), ", ", String.fromFloat singleCellPercentage, "%)" ]
-
-
-getCellPercentage : Crossword -> Float
-getCellPercentage crossword =
-    100 / toFloat (Crossword.getNumberOfRows crossword)
 
 
 focusTextInput : Cmd Msg
