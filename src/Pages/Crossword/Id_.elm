@@ -377,7 +377,10 @@ viewClue state direction clue =
         , style "background-color" backgroundColor
         ]
         [ div
-            []
+            [ style "font-weight" "bold"
+            , style "padding-right" "10px"
+            , style "width" "10px"
+            ]
             [ text (String.fromInt (Crossword.getClueNumber clue))
             ]
         , div
@@ -529,6 +532,7 @@ viewCell state index cell =
                 , style "z-index" zIndex
                 , style "backgroundColor" backgroundColor
                 , style "font-size" "min(4vw,30px)"
+                , style "user-select" "none"
                 ]
                 [ div
                     [ style "position" "absolute"
