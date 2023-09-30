@@ -2,9 +2,13 @@
   "name": "cooperative-crosswords-fe",
   "version": "1.0.0",
   "scripts": {
-    "review": "elm-review --ignore-dirs .elm-spa"
+    "review": "elm-review --ignore-dirs .elm-spa",
+    "start": "elm-spa server"
   },
   "devDependencies": {
-    "elm-review": "^2.10.2"
+    "elm-review": "^2.10.3"
+  },
+  "dependencies": {
+    "elm-spa": "^6.0.4"
   }
 }

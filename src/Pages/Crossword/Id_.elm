@@ -57,108 +57,150 @@ init req =
 
 
 type Msg
-    = GotCrossword (Result Http.Error Crossword)
-    | CellSelected Int CellData
+    = NoOp
+    | GotCrossword (Result Http.Error Crossword)
+    | PuzzleChange PuzzleMsg
+
+
+type PuzzleMsg
+    = CellSelected Int CellData
     | CellUnSelected
     | CellChanged Int (Maybe Char)
     | KeyTouched KeyEventMsg
-    | NoOp
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    case msg of
-        GotCrossword crossword ->
+    case ( msg, model ) of
+        ( NoOp, _ ) ->
+            ( model, Cmd.none )
+
+        ( GotCrossword crossword, _ ) ->
             case crossword of
                 Ok c ->
-                    let
-                        index : Int
-                        index =
-                            Maybe.withDefault
-                                0
-                                (List.Extra.findIndex
-                                    (\cell ->
-                                        case cell of
-                                            White _ ->
-                                                True
-
-                                            Black ->
-                                                False
-                                    )
-                                    (Crossword.getCells c)
-                                )
-
-                        cellAtIndex : Maybe Cell
-                        cellAtIndex =
-                            List.Extra.getAt index (Crossword.getCells c)
-
-                        direction : Direction
-                        direction =
-                            case cellAtIndex of
-                                Just (White cellData) ->
-                                    Crossword.getDirection cellData.clueId1
-
-                                _ ->
-                                    Across
-
-                        clueId : ClueId
-                        clueId =
-                            case cellAtIndex of
-                                Just (White cellData) ->
-                                    cellData.clueId1
-
-                                _ ->
-                                    { direction = Across, number = 1 }
-
-                        state : State
-                        state =
-                            { index = index
-                            , direction = direction
-                            , clueId = clueId
-                            }
-                    in
-                    ( Loaded c state, focusTextInput )
+                    initPuzzle c
 
                 Err e ->
                     ( Error e, Cmd.none )
 
-        CellSelected cellIndex cellData ->
-            case model of
-                Loaded crossword state ->
-                    let
-                        newDirection : Direction
-                        newDirection =
-                            Crossword.getNewDirection cellIndex state.index state.direction cellData
+        ( PuzzleChange puzzleMsg, Loaded crossword state ) ->
+            updatePuzzle puzzleMsg crossword state
 
-                        newClueId : ClueId
-                        newClueId =
-                            case cellData.clueId2 of
-                                Just clueId ->
-                                    if clueId.direction == newDirection then
-                                        clueId
+        _ ->
+            ( model, Cmd.none )
 
-                                    else
-                                        cellData.clueId1
 
-                                Nothing ->
-                                    cellData.clueId1
+initPuzzle : Crossword -> ( Model, Cmd Msg )
+initPuzzle c =
+    let
+        index : Int
+        index =
+            Maybe.withDefault
+                0
+                (List.Extra.findIndex
+                    (\cell ->
+                        case cell of
+                            White _ ->
+                                True
 
-                        newState : State
-                        newState =
-                            { index = cellIndex, direction = newDirection, clueId = newClueId }
-                    in
-                    ( Loaded crossword newState, focusTextInput )
+                            Black ->
+                                False
+                    )
+                    (Crossword.getCells c)
+                )
+
+        cellAtIndex : Maybe Cell
+        cellAtIndex =
+            List.Extra.getAt index (Crossword.getCells c)
+
+        direction : Direction
+        direction =
+            case cellAtIndex of
+                Just (White cellData) ->
+                    Crossword.getDirection cellData.clueId1
 
                 _ ->
-                    ( model, Cmd.none )
+                    Across
+
+        clueId : ClueId
+        clueId =
+            case cellAtIndex of
+                Just (White cellData) ->
+                    cellData.clueId1
+
+                _ ->
+                    { direction = Across, number = 1 }
+
+        state : State
+        state =
+            { index = index
+            , direction = direction
+            , clueId = clueId
+            }
+    in
+    ( Loaded c state, focusTextInput )
+
+
+updatePuzzle : PuzzleMsg -> Crossword -> State -> ( Model, Cmd Msg )
+updatePuzzle msg crossword state =
+    case msg of
+        CellSelected cellIndex cellData ->
+            let
+                newDirection : Direction
+                newDirection =
+                    Crossword.getNewDirection cellIndex state.index state.direction cellData
+
+                newClueId : ClueId
+                newClueId =
+                    case cellData.clueId2 of
+                        Just clueId ->
+                            if clueId.direction == newDirection then
+                                clueId
+
+                            else
+                                cellData.clueId1
+
+                        Nothing ->
+                            cellData.clueId1
+
+                newState : State
+                newState =
+                    { index = cellIndex, direction = newDirection, clueId = newClueId }
+            in
+            ( Loaded crossword newState, focusTextInput )
 
         CellChanged index string ->
-            case model of
-                Loaded crossword state ->
+            let
+                nextIndex : Int
+                nextIndex =
+                    Crossword.getNextWhiteCell crossword state.direction state.index False
+
+                newState : State
+                newState =
+                    { state | index = nextIndex }
+
+                newCrossword : Crossword
+                newCrossword =
+                    Crossword.updateGrid crossword index string
+            in
+            ( Loaded newCrossword newState, focusTextInput )
+
+        KeyTouched keyEventMsg ->
+            case keyEventMsg of
+                BackspacePressed ->
                     let
+                        currentCellChar : Maybe Char
+                        currentCellChar =
+                            Crossword.getCurrentCellChar state.index crossword
+
                         nextIndex : Int
                         nextIndex =
-                            Crossword.getNextWhiteCell crossword state.direction state.index False
+                            case currentCellChar of
+                                Nothing ->
+                                    Crossword.getNextWhiteCell crossword state.direction state.index True
+
+                                _ ->
+                                    state.index
 
                         newState : State
                         newState =
@@ -166,64 +208,21 @@ update msg model =
 
                         newCrossword : Crossword
                         newCrossword =
-                            Crossword.updateGrid crossword index string
+                            Crossword.updateGrid crossword state.index Nothing
                     in
                     ( Loaded newCrossword newState, focusTextInput )
 
+                --TODO implement other keys
                 _ ->
-                    ( model, Cmd.none )
-
-        KeyTouched keyEventMsg ->
-            case model of
-                Loaded crossword state ->
-                    case keyEventMsg of
-                        BackspacePressed ->
-                            let
-                                currentCellChar : Maybe Char
-                                currentCellChar =
-                                    Crossword.getCurrentCellChar state.index crossword
-
-                                nextIndex : Int
-                                nextIndex =
-                                    case currentCellChar of
-                                        Nothing ->
-                                            Crossword.getNextWhiteCell crossword state.direction state.index True
-
-                                        _ ->
-                                            state.index
-
-                                newState : State
-                                newState =
-                                    { state | index = nextIndex }
-
-                                newCrossword : Crossword
-                                newCrossword =
-                                    Crossword.updateGrid crossword state.index Nothing
-                            in
-                            ( Loaded newCrossword newState, focusTextInput )
-
-                        --TODO implement other keys
-                        _ ->
-                            ( model, Cmd.none )
-
-                _ ->
-                    ( model, Cmd.none )
-
-        NoOp ->
-            ( model, Cmd.none )
+                    ( Loaded crossword state, Cmd.none )
 
         CellUnSelected ->
-            case model of
-                Loaded crossword state ->
-                    let
-                        newState : State
-                        newState =
-                            { state | index = -100, clueId = { direction = Across, number = -100 } }
-                    in
-                    ( Loaded crossword newState, focusTextInput )
-
-                _ ->
-                    ( model, Cmd.none )
+            let
+                newState : State
+                newState =
+                    { state | index = -100, clueId = { direction = Across, number = -100 } }
+            in
+            ( Loaded crossword newState, focusTextInput )
 
 
 
@@ -252,8 +251,13 @@ subscriptions _ =
 
 keyDecoder : (String -> KeyEventMsg) -> Decode.Decoder Msg
 keyDecoder map =
+    let
+        createPuzzleChange : KeyEventMsg -> Msg
+        createPuzzleChange value =
+            PuzzleChange (KeyTouched value)
+    in
     Decode.map
-        (map >> KeyTouched)
+        (map >> createPuzzleChange)
         (Decode.field "key" Decode.string)
 
 
@@ -337,7 +341,7 @@ background =
         [ style "height" "100%"
         , style "width" "100%"
         , style "position" "fixed"
-        , onClick CellUnSelected
+        , onClick (PuzzleChange CellUnSelected)
         ]
         []
 
@@ -449,7 +453,7 @@ viewInput crossword state =
 
 onTextInput : State -> String -> Msg
 onTextInput state string =
-    CellChanged state.index (List.head (List.reverse (String.toList string)))
+    PuzzleChange (CellChanged state.index (List.head (List.reverse (String.toList string))))
 
 
 shouldHighlight : State -> CellData -> Bool
@@ -509,7 +513,7 @@ viewCell state index cell =
             in
             div
                 [ style "display" "relative"
-                , onClick (CellSelected index cellData)
+                , onClick (PuzzleChange (CellSelected index cellData))
                 , id (String.fromInt index)
                 , style
                     "position"

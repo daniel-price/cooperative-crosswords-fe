@@ -1,4 +1,4 @@
-module Crossword exposing (Cell(..), CellData, Clue, ClueId, Clues, Crossword(..), Direction(..), Internals, directionToString, fetch, getCells, getClueNumber, getClues, getColumnNumber, getCurrentCellChar, getDirection, getNewDirection, getNextWhiteCell, getNumberOfRows, getRowNumber, getText, updateGrid)
+module Crossword exposing (Cell(..), CellData, Clue, ClueId, Clues, Crossword(..), Direction(..), Internals, directionToString, fetch, getCells, getClueNumber, getClues, getColumnNumber, getCurrentCellChar, getDirection, getNewDirection, getNextWhiteCell, getRowNumber, getText, updateGrid)
 
 import Constants
 import Http
